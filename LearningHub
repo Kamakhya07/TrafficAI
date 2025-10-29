@@ -1,0 +1,464 @@
+import React, { useState, useEffect } from "react";
+import { LearningResource, UserProgress } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { 
+  BookOpen,
+  Search,
+  Clock,
+  CheckCircle,
+  Play,
+  Filter,
+  Star,
+  X
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const difficultyColors = {
+  beginner: "bg-green-100 text-green-800 border-green-200",
+  intermediate: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  advanced: "bg-red-100 text-red-800 border-red-200"
+};
+
+const typeColors = {
+  article: "bg-blue-100 text-blue-800",
+  video: "bg-purple-100 text-purple-800",
+  tutorial: "bg-green-100 text-green-800",
+  guide: "bg-orange-100 text-orange-800",
+  quiz: "bg-pink-100 text-pink-800",
+  challenge: "bg-indigo-100 text-indigo-800",
+  infographic: "bg-cyan-100 text-cyan-800"
+};
+
+export default function LearningHub() {
+  const [resources, setResources] = useState([]);
+  const [progress, setProgress] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterDifficulty, setFilterDifficulty] = useState("all");
+  const [selectedResource, setSelectedResource] = useState(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [resourcesData, progressData] = await Promise.all([
+        LearningResource.list("-created_date"),
+        UserProgress.list()
+      ]);
+      setResources(resourcesData);
+      setProgress(progressData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isResourceCompleted = (resourceId) => {
+    return progress.some(p => p.resource_id === resourceId && p.completed);
+  };
+
+  const markAsComplete = async (resourceId) => {
+    try {
+      const existing = progress.find(p => p.resource_id === resourceId);
+      if (existing) {
+        await UserProgress.update(existing.id, { 
+          completed: true, 
+          completion_date: new Date().toISOString().split('T')[0]
+        });
+      } else {
+        await UserProgress.create({
+          resource_id: resourceId,
+          completed: true,
+          completion_date: new Date().toISOString().split('T')[0]
+        });
+      }
+      loadData();
+      setSelectedResource(null);
+    } catch (error) {
+      console.error("Error marking as complete:", error);
+    }
+  };
+
+  const filteredResources = resources.filter(resource => {
+    const matchesSearch = 
+      resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      resource.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      resource.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesCategory = filterCategory === "all" || resource.category === filterCategory;
+    const matchesDifficulty = filterDifficulty === "all" || resource.difficulty_level === filterDifficulty;
+    
+    return matchesSearch && matchesCategory && matchesDifficulty;
+  });
+
+  const featuredResources = resources.filter(r => r.is_featured).slice(0, 3);
+  const completedCount = progress.filter(p => p.completed).length;
+
+  const getCategoryCounts = () => {
+    const counts = {};
+    resources.forEach(resource => {
+      counts[resource.category] = (counts[resource.category] || 0) + 1;
+    });
+    return counts;
+  };
+
+  const categoryCounts = getCategoryCounts();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-20 h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+            <BookOpen className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+            Learning Hub
+          </h1>
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            Enhance your knowledge of traffic rules, safety guidelines, and driving best practices
+          </p>
+        </div>
+
+        {/* Stats Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="p-6 text-center">
+              <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-blue-900">{resources.length}</div>
+              <div className="text-blue-700 text-sm">Total Resources</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="p-6 text-center">
+              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-green-900">{completedCount}</div>
+              <div className="text-green-700 text-sm">Completed</div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardContent className="p-6 text-center">
+              <Star className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-purple-900">{featuredResources.length}</div>
+              <div className="text-purple-700 text-sm">Featured</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Featured Resources */}
+        {featuredResources.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Star className="w-6 h-6 text-yellow-500" />
+              Featured Resources
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredResources.map((resource) => (
+                <Card 
+                  key={resource.id}
+                  className="cursor-pointer hover:shadow-xl transition-all border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50"
+                  onClick={() => setSelectedResource(resource)}
+                >
+                  <CardContent className="p-5">
+                    {resource.media_url && (
+                      <div className="mb-4 rounded-lg overflow-hidden">
+                        <img 
+                          src={resource.media_url} 
+                          alt={resource.title}
+                          className="w-full h-40 object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-lg text-slate-900 flex-1">
+                        {resource.title}
+                      </h3>
+                      {isResourceCompleted(resource.id) && (
+                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                      {resource.description}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge className={typeColors[resource.type]}>
+                        {resource.type}
+                      </Badge>
+                      {resource.duration_minutes && (
+                        <div className="flex items-center gap-1 text-slate-600">
+                          <Clock className="w-3 h-3" />
+                          {resource.duration_minutes} min
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filters */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Search resources..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-slate-500" />
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="driving_tips">Driving Tips ({categoryCounts.driving_tips || 0})</SelectItem>
+                    <SelectItem value="safety_guidelines">Safety Guidelines ({categoryCounts.safety_guidelines || 0})</SelectItem>
+                    <SelectItem value="traffic_signs">Traffic Signs ({categoryCounts.traffic_signs || 0})</SelectItem>
+                    <SelectItem value="road_rules">Road Rules ({categoryCounts.road_rules || 0})</SelectItem>
+                    <SelectItem value="vehicle_maintenance">Vehicle Maintenance ({categoryCounts.vehicle_maintenance || 0})</SelectItem>
+                    <SelectItem value="emergency_procedures">Emergency Procedures ({categoryCounts.emergency_procedures || 0})</SelectItem>
+                    <SelectItem value="eco_driving">Eco Driving ({categoryCounts.eco_driving || 0})</SelectItem>
+                    <SelectItem value="defensive_driving">Defensive Driving ({categoryCounts.defensive_driving || 0})</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Resources Grid */}
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">
+            All Resources ({filteredResources.length})
+          </h2>
+          
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array(6).fill(0).map((_, i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardContent className="p-6">
+                    <div className="h-40 bg-slate-200 rounded mb-4" />
+                    <div className="h-4 bg-slate-200 rounded mb-2" />
+                    <div className="h-3 bg-slate-200 rounded w-2/3" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredResources.length === 0 ? (
+            <div className="text-center py-12">
+              <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-600 mb-2">No resources found</h3>
+              <p className="text-slate-500">Try adjusting your search or filter criteria</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredResources.map((resource) => {
+                const isCompleted = isResourceCompleted(resource.id);
+                
+                return (
+                  <Card 
+                    key={resource.id}
+                    className={`cursor-pointer hover:shadow-xl transition-all ${
+                      isCompleted ? 'border-2 border-green-300 bg-green-50' : 'hover:border-indigo-300'
+                    }`}
+                    onClick={() => setSelectedResource(resource)}
+                  >
+                    <CardContent className="p-5">
+                      {resource.media_url && (
+                        <div className="mb-4 rounded-lg overflow-hidden border-2 border-slate-200">
+                          <img 
+                            src={resource.media_url} 
+                            alt={resource.title}
+                            className="w-full h-40 object-cover"
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="font-semibold text-lg text-slate-900 flex-1 line-clamp-2">
+                          {resource.title}
+                        </h3>
+                        {isCompleted && (
+                          <div className="flex-shrink-0 ml-2">
+                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                        {resource.description}
+                      </p>
+
+                      <div className="flex items-center gap-2 flex-wrap mb-3">
+                        <Badge className={typeColors[resource.type]}>
+                          {resource.type}
+                        </Badge>
+                        <Badge className={difficultyColors[resource.difficulty_level]}>
+                          {resource.difficulty_level}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-slate-600">
+                        {resource.duration_minutes && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {resource.duration_minutes} min
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          {resource.category.replace(/_/g, ' ')}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Resource Detail Modal */}
+        <Dialog open={!!selectedResource} onOpenChange={() => setSelectedResource(null)}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            {selectedResource && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <DialogTitle className="text-2xl mb-2">{selectedResource.title}</DialogTitle>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={typeColors[selectedResource.type]}>
+                          {selectedResource.type}
+                        </Badge>
+                        <Badge className={difficultyColors[selectedResource.difficulty_level]}>
+                          {selectedResource.difficulty_level}
+                        </Badge>
+                        {selectedResource.duration_minutes && (
+                          <div className="flex items-center gap-1 text-sm text-slate-600">
+                            <Clock className="w-4 h-4" />
+                            {selectedResource.duration_minutes} minutes
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedResource(null)}
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </DialogHeader>
+
+                <div className="space-y-6 mt-6">
+                  {selectedResource.description && (
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-blue-900 leading-relaxed">{selectedResource.description}</p>
+                    </div>
+                  )}
+
+                  {selectedResource.media_url && (
+                    <div className="rounded-lg overflow-hidden border-2 border-slate-200">
+                      <img 
+                        src={selectedResource.media_url} 
+                        alt={selectedResource.title}
+                        className="w-full max-h-96 object-contain bg-slate-50"
+                      />
+                    </div>
+                  )}
+
+                  <div className="prose prose-slate max-w-none">
+                    <div className="whitespace-pre-line leading-relaxed text-slate-700">
+                      {selectedResource.content}
+                    </div>
+                  </div>
+
+                  {selectedResource.tags && selectedResource.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-4 border-t">
+                      <span className="text-sm font-medium text-slate-700">Tags:</span>
+                      {selectedResource.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    {!isResourceCompleted(selectedResource.id) ? (
+                      <Button
+                        onClick={() => markAsComplete(selectedResource.id)}
+                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Mark as Complete
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled
+                        className="flex-1 bg-green-600 text-white"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Completed ✓
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
