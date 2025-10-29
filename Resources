@@ -1,0 +1,533 @@
+import React, { useState, useEffect } from "react";
+import { Link as LinkEntity, LearningResource } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Link2, 
+  BookOpen, 
+  Search, 
+  ExternalLink, 
+  Globe,
+  Smartphone,
+  FileText,
+  CreditCard,
+  Building2,
+  Play,
+  Clock,
+  TrendingUp,
+  Shield,
+  AlertCircle,
+  Car,
+  Wrench,
+  Activity,
+  Zap,
+  Star
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+const categoryIcons = {
+  rto_portal: Building2,
+  online_service: Globe,
+  government_website: FileText,
+  payment_portal: CreditCard,
+  information_portal: BookOpen,
+  mobile_app: Smartphone,
+  other: Link2
+};
+
+const learningCategoryIcons = {
+  driving_tips: Car,
+  safety_guidelines: Shield,
+  traffic_signs: AlertCircle,
+  road_rules: FileText,
+  vehicle_maintenance: Wrench,
+  emergency_procedures: Activity,
+  eco_driving: TrendingUp,
+  defensive_driving: Zap,
+  other: BookOpen
+};
+
+const difficultyColors = {
+  beginner: "bg-green-100 text-green-800 border-green-200",
+  intermediate: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  advanced: "bg-red-100 text-red-800 border-red-200"
+};
+
+export default function Resources() {
+  const [links, setLinks] = useState([]);
+  const [learningResources, setLearningResources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [filterCategory, setFilterCategory] = useState("all");
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [linksData, resourcesData] = await Promise.all([
+        LinkEntity.list("-priority"),
+        LearningResource.list("-created_date")
+      ]);
+      setLinks(linksData);
+      setLearningResources(resourcesData);
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const groupedLinks = links.reduce((acc, link) => {
+    if (!acc[link.category]) {
+      acc[link.category] = [];
+    }
+    acc[link.category].push(link);
+    return acc;
+  }, {});
+
+  const filteredResources = learningResources.filter(resource => {
+    const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         resource.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         resource.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = filterCategory === "all" || resource.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const featuredResources = learningResources.filter(r => r.is_featured).slice(0, 3);
+
+  return (
+    <div className="min-h-screen p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <BookOpen className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            Resources & Learning Hub
+          </h1>
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+            Access important links and expand your knowledge about traffic rules and safe driving
+          </p>
+        </div>
+
+        <Tabs defaultValue="links" className="space-y-6">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 h-12">
+            <TabsTrigger value="links" className="text-base">
+              <Link2 className="w-4 h-4 mr-2" />
+              Important Links
+            </TabsTrigger>
+            <TabsTrigger value="learning" className="text-base">
+              <BookOpen className="w-4 h-4 mr-2" />
+              Learning Hub
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Important Links Tab */}
+          <TabsContent value="links" className="space-y-6">
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Globe className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                      Official Government Portals
+                    </h3>
+                    <p className="text-blue-800">
+                      Access verified government websites and online services for all your RTO needs. 
+                      These are official portals for license renewal, vehicle registration, challan payment, and more.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {Array(6).fill(0).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="h-4 bg-slate-200 rounded mb-4" />
+                      <div className="h-3 bg-slate-200 rounded mb-2" />
+                      <div className="h-3 bg-slate-200 rounded w-2/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {Object.entries(groupedLinks).map(([category, categoryLinks]) => {
+                  const CategoryIcon = categoryIcons[category] || Link2;
+                  
+                  return (
+                    <div key={category}>
+                      <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <CategoryIcon className="w-5 h-5 text-indigo-600" />
+                        {category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {categoryLinks.map((link) => {
+                          const LinkIcon = categoryIcons[link.category] || Link2;
+                          
+                          return (
+                            <Card key={link.id} className="hover:shadow-lg transition-all group">
+                              <CardContent className="p-6">
+                                <div className="flex items-start gap-4">
+                                  <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-indigo-200 transition-colors">
+                                    <LinkIcon className="w-6 h-6 text-indigo-600" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                        {link.title}
+                                      </h3>
+                                      {link.is_official && (
+                                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                          Official
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-slate-600 mb-3 line-clamp-2">
+                                      {link.description}
+                                    </p>
+                                    <a
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                                    >
+                                      Visit Website
+                                      <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Quick Access Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <Smartphone className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-blue-900 mb-2">Mobile Apps</h3>
+                  <p className="text-sm text-blue-800">
+                    Download official government apps for easier access to services
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <CreditCard className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-green-900 mb-2">Payment Portals</h3>
+                  <p className="text-sm text-green-800">
+                    Secure online payment options for fines and fees
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <CardContent className="p-6 text-center">
+                  <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                    <Globe className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="font-semibold text-purple-900 mb-2">State Portals</h3>
+                  <p className="text-sm text-purple-800">
+                    Access state-specific RTO portals and services
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Learning Hub Tab */}
+          <TabsContent value="learning" className="space-y-6">
+            {/* Search and Filter */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      placeholder="Search learning resources..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="driving_tips">Driving Tips</option>
+                    <option value="safety_guidelines">Safety Guidelines</option>
+                    <option value="traffic_signs">Traffic Signs</option>
+                    <option value="road_rules">Road Rules</option>
+                    <option value="vehicle_maintenance">Vehicle Maintenance</option>
+                    <option value="emergency_procedures">Emergency Procedures</option>
+                    <option value="eco_driving">Eco Driving</option>
+                    <option value="defensive_driving">Defensive Driving</option>
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Featured Resources */}
+            {featuredResources.length > 0 && !searchTerm && filterCategory === "all" && (
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <Star className="w-6 h-6 text-yellow-500" />
+                  Featured Resources
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {featuredResources.map((resource) => {
+                    const CategoryIcon = learningCategoryIcons[resource.category] || BookOpen;
+                    
+                    return (
+                      <Card 
+                        key={resource.id} 
+                        className="hover:shadow-xl transition-all cursor-pointer group border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50"
+                        onClick={() => setSelectedResource(resource)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                              <CategoryIcon className="w-5 h-5 text-yellow-600" />
+                            </div>
+                            <Star className="w-5 h-5 text-yellow-500 ml-auto" />
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2 group-hover:text-indigo-600 transition-colors">
+                            {resource.title}
+                          </h3>
+                          <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                            {resource.description}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <Badge className={difficultyColors[resource.difficulty_level]}>
+                              {resource.difficulty_level}
+                            </Badge>
+                            {resource.duration_minutes && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {resource.duration_minutes} min
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* All Resources */}
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">
+                {searchTerm || filterCategory !== "all" ? "Search Results" : "All Learning Resources"}
+              </h2>
+              
+              {loading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Array(6).fill(0).map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-4 bg-slate-200 rounded mb-4" />
+                        <div className="h-3 bg-slate-200 rounded mb-2" />
+                        <div className="h-3 bg-slate-200 rounded w-2/3" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : filteredResources.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-slate-600 mb-2">No resources found</h3>
+                  <p className="text-slate-500">Try adjusting your search or filter criteria</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredResources.map((resource) => {
+                    const CategoryIcon = learningCategoryIcons[resource.category] || BookOpen;
+                    
+                    return (
+                      <Card 
+                        key={resource.id} 
+                        className="hover:shadow-lg transition-all cursor-pointer group"
+                        onClick={() => setSelectedResource(resource)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                              <CategoryIcon className="w-5 h-5 text-indigo-600" />
+                            </div>
+                            {resource.type === 'video' && (
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                <Play className="w-3 h-3 mr-1" />
+                                Video
+                              </Badge>
+                            )}
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                            {resource.title}
+                          </h3>
+                          <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                            {resource.description}
+                          </p>
+                          <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <Badge className={difficultyColors[resource.difficulty_level]}>
+                              {resource.difficulty_level}
+                            </Badge>
+                            {resource.duration_minutes && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {resource.duration_minutes} min
+                              </div>
+                            )}
+                            <Badge variant="outline" className="text-xs">
+                              {resource.category.replace(/_/g, ' ')}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Learning Categories Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+              {[
+                { category: "driving_tips", label: "Driving Tips", color: "from-blue-500 to-blue-600" },
+                { category: "safety_guidelines", label: "Safety", color: "from-green-500 to-green-600" },
+                { category: "traffic_signs", label: "Traffic Signs", color: "from-red-500 to-red-600" },
+                { category: "vehicle_maintenance", label: "Maintenance", color: "from-orange-500 to-orange-600" }
+              ].map(({ category, label, color }) => {
+                const count = learningResources.filter(r => r.category === category).length;
+                const Icon = learningCategoryIcons[category];
+                
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setFilterCategory(category)}
+                    className="text-left p-4 bg-white rounded-xl border border-slate-200 hover:shadow-md transition-all"
+                  >
+                    <div className={`w-10 h-10 bg-gradient-to-r ${color} rounded-lg flex items-center justify-center mb-3`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="font-semibold text-sm mb-1">{label}</h3>
+                    <p className="text-xs text-slate-500">{count} resources</p>
+                  </button>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Resource Detail Dialog */}
+        <Dialog open={!!selectedResource} onOpenChange={() => setSelectedResource(null)}>
+          <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-y-auto">
+            {selectedResource && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">{selectedResource.title}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge className={difficultyColors[selectedResource.difficulty_level]}>
+                      {selectedResource.difficulty_level}
+                    </Badge>
+                    <Badge variant="outline">
+                      {selectedResource.category.replace(/_/g, ' ')}
+                    </Badge>
+                    {selectedResource.duration_minutes && (
+                      <div className="flex items-center gap-1 text-sm text-slate-600">
+                        <Clock className="w-4 h-4" />
+                        {selectedResource.duration_minutes} minutes
+                      </div>
+                    )}
+                    {selectedResource.type === 'video' && (
+                      <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                        <Play className="w-3 h-3 mr-1" />
+                        Video
+                      </Badge>
+                    )}
+                  </div>
+
+                  {selectedResource.description && (
+                    <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                      <p className="text-indigo-900">{selectedResource.description}</p>
+                    </div>
+                  )}
+
+                  {selectedResource.media_url && (
+                    <div className="rounded-lg overflow-hidden border border-slate-200">
+                      {selectedResource.type === 'video' ? (
+                        <video 
+                          controls 
+                          className="w-full"
+                          src={selectedResource.media_url}
+                        />
+                      ) : (
+                        <img 
+                          src={selectedResource.media_url} 
+                          alt={selectedResource.title}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="prose prose-slate max-w-none">
+                    <div className="whitespace-pre-wrap leading-relaxed">
+                      {selectedResource.content}
+                    </div>
+                  </div>
+
+                  {selectedResource.tags && selectedResource.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
+                      <span className="text-sm font-medium text-slate-700">Tags:</span>
+                      {selectedResource.tags.map((tag, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
