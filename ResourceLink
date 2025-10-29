@@ -1,0 +1,312 @@
+import React, { useState, useEffect } from "react";
+import { Link as LinkEntity } from "@/entities/all";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Link2, 
+  Search, 
+  ExternalLink, 
+  Globe,
+  Smartphone,
+  FileText,
+  CreditCard,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle,
+  AlertCircle,
+  Info
+} from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+const categoryIcons = {
+  rto_portal: Building2,
+  online_service: Globe,
+  government_website: FileText,
+  payment_portal: CreditCard,
+  information_portal: FileText,
+  mobile_app: Smartphone,
+  other: Link2
+};
+
+export default function ResourceLinks() {
+  const [links, setLinks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [expandedLinks, setExpandedLinks] = useState({});
+
+  useEffect(() => {
+    loadLinks();
+  }, []);
+
+  const loadLinks = async () => {
+    try {
+      const data = await LinkEntity.list("-priority");
+      setLinks(data);
+    } catch (error) {
+      console.error("Error loading links:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleExpanded = (linkId) => {
+    setExpandedLinks(prev => ({
+      ...prev,
+      [linkId]: !prev[linkId]
+    }));
+  };
+
+  const groupedLinks = links.reduce((acc, link) => {
+    if (!acc[link.category]) {
+      acc[link.category] = [];
+    }
+    acc[link.category].push(link);
+    return acc;
+  }, {});
+
+  const filteredLinks = links.filter(link =>
+    link.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    link.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+            <Link2 className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+            Important Links & Resources
+          </h1>
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            Access official government portals and online services with easy-to-follow guides
+          </p>
+        </div>
+
+        {/* Search */}
+        <Card className="shadow-lg">
+          <CardContent className="p-6">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Search for services, portals, or apps..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-12 h-14 text-lg"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Info Banner */}
+        <Card className="bg-gradient-to-r from-blue-100 to-indigo-100 border-blue-300 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Info className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  Verified Official Links
+                </h3>
+                <p className="text-blue-800">
+                  All links below are verified government portals and official services. 
+                  Click "How to Use" on any link to see step-by-step instructions and required documents.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Links by Category */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-6">
+            {Array(6).fill(0).map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-4 bg-slate-200 rounded mb-4" />
+                  <div className="h-3 bg-slate-200 rounded mb-2" />
+                  <div className="h-3 bg-slate-200 rounded w-2/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(groupedLinks).map(([category, categoryLinks]) => {
+              const CategoryIcon = categoryIcons[category] || Link2;
+              
+              return (
+                <div key={category}>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                      <CategoryIcon className="w-5 h-5 text-white" />
+                    </div>
+                    {category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4">
+                    {categoryLinks.filter(link =>
+                      !searchTerm || 
+                      link.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      link.description?.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).map((link) => {
+                      const LinkIcon = categoryIcons[link.category] || Link2;
+                      const isExpanded = expandedLinks[link.id];
+                      
+                      return (
+                        <Card key={link.id} className="hover:shadow-xl transition-all group border-2 hover:border-indigo-300">
+                          <CardContent className="p-6">
+                            <div className="flex items-start gap-4">
+                              <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:from-indigo-200 group-hover:to-purple-200 transition-all">
+                                <LinkIcon className="w-7 h-7 text-indigo-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                  <div>
+                                    <h3 className="font-bold text-xl text-slate-900 group-hover:text-indigo-600 transition-colors mb-2">
+                                      {link.title}
+                                    </h3>
+                                    {link.is_official && (
+                                      <Badge className="bg-green-100 text-green-800 border-green-300">
+                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                        Official & Verified
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                <p className="text-slate-600 mb-4 leading-relaxed">
+                                  {link.description}
+                                </p>
+
+                                <div className="flex flex-wrap gap-3">
+                                  <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                                  >
+                                    Visit Portal
+                                    <ExternalLink className="w-4 h-4" />
+                                  </a>
+
+                                  {(link.how_to_use || link.prerequisites) && (
+                                    <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(link.id)}>
+                                      <CollapsibleTrigger asChild>
+                                        <Button variant="outline" className="gap-2">
+                                          {isExpanded ? (
+                                            <>
+                                              Hide Guide
+                                              <ChevronUp className="w-4 h-4" />
+                                            </>
+                                          ) : (
+                                            <>
+                                              How to Use
+                                              <ChevronDown className="w-4 h-4" />
+                                            </>
+                                          )}
+                                        </Button>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="mt-4">
+                                        <div className="bg-indigo-50 rounded-xl p-5 border-2 border-indigo-200 space-y-4">
+                                          {link.prerequisites && (
+                                            <div>
+                                              <h4 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                                                <AlertCircle className="w-5 h-5" />
+                                                Before You Start - Required Documents:
+                                              </h4>
+                                              <p className="text-indigo-800 whitespace-pre-line leading-relaxed">
+                                                {link.prerequisites}
+                                              </p>
+                                            </div>
+                                          )}
+                                          
+                                          {link.how_to_use && (
+                                            <div>
+                                              <h4 className="font-semibold text-indigo-900 mb-2 flex items-center gap-2">
+                                                <CheckCircle className="w-5 h-5" />
+                                                Step-by-Step Guide:
+                                              </h4>
+                                              <div className="text-indigo-800 whitespace-pre-line leading-relaxed space-y-2">
+                                                {link.how_to_use.split('\n').map((line, idx) => (
+                                                  <div key={idx} className="flex items-start gap-2">
+                                                    {line.trim().match(/^\d+\./) && (
+                                                      <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                                                        {line.trim().match(/^\d+/)[0]}
+                                                      </span>
+                                                    )}
+                                                    <span>{line.replace(/^\d+\.\s*/, '')}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Quick Access Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+          <Card className="bg-gradient-to-br from-blue-100 to-blue-200 border-blue-300 hover:shadow-xl transition-all">
+            <CardContent className="p-6 text-center">
+              <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Smartphone className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="font-bold text-blue-900 mb-2 text-lg">Mobile Apps</h3>
+              <p className="text-sm text-blue-800">
+                Download official apps for convenient access to services on-the-go
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-100 to-green-200 border-green-300 hover:shadow-xl transition-all">
+            <CardContent className="p-6 text-center">
+              <div className="w-14 h-14 bg-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <CreditCard className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="font-bold text-green-900 mb-2 text-lg">Payment Portals</h3>
+              <p className="text-sm text-green-800">
+                Secure online payment options for challans, fees, and other services
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-100 to-purple-200 border-purple-300 hover:shadow-xl transition-all">
+            <CardContent className="p-6 text-center">
+              <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Building2 className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="font-bold text-purple-900 mb-2 text-lg">RTO Services</h3>
+              <p className="text-sm text-purple-800">
+                Access state-specific RTO portals for licenses and registrations
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
